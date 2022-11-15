@@ -577,6 +577,39 @@ describe('Mock retro-compatibility', () => {
     });
   });
 
+  test('can mock nested root query', () => {
+    const testQuery = /* GraphQL */ `
+      {
+        returnBirdsAndBees {
+          ... on Bird {
+            returnInt
+            returnString
+            returnStringArgument(s: "Hello")
+          }
+        }
+      }
+    `;
+    const mockMap: IMocks = {
+      RootQuery: () => ({
+        returnBirdsAndBees: [
+          { __typename: 'Bird', returnInt: 42, returnStringArgument: 'Overridden' },
+          { __typename: 'Bird', returnInt: 42, returnStringArgument: 'Overridden' },
+        ],
+      }),
+    };
+    return mockServer(shorthand, mockMap)
+      .query(testQuery)
+      .then((res: any) => {
+        // Test that simple fields can be overridden
+        expect(res.data.returnBirdsAndBees[0].returnInt).toBe(42);
+        expect(res.data.returnBirdsAndBees[1].returnInt).toBe(42);
+
+        // Test that resolver fields can be overridden
+        expect(res.data.returnBirdsAndBees[0].returnStringArgument).toBe('Overridden');
+        expect(res.data.returnBirdsAndBees[1].returnStringArgument).toBe('Overridden');
+      });
+  });
+
   test('throws an error when __typename is not returned within an explicit interface mock', () => {
     let jsSchema = buildSchema(shorthand);
     const mockMap = {
